@@ -1,41 +1,118 @@
 import json
 import psycopg2
 
-with open("/opt/airflow/data/movies.json", "r", encoding="utf-8") as f:
-    movie = json.load(f)
+CLEAN_PATH      = "/opt/airflow/data/movies_clean.json"
+GENRES_PATH     = "/opt/airflow/data/genres.json"
+LANGUAGES_PATH  = "/opt/airflow/data/languages.json"
+RELATIONS_PATH  = "/opt/airflow/data/movie_genres.json"
 
-conn = psycopg2.connect(
-    host="postgres",
-    database="movies_db",
-    user="admin",
-    password="admin"
-)
 
-cur = conn.cursor()
+def get_connection():
+    return psycopg2.connect(
+        host="postgres",
+        database="movies_db",
+        user="admin",
+        password="admin"
+    )
 
-cur.execute("""
-INSERT INTO movies (
-    id,
-    title,
-    release_date,
-    budget,
-    revenue,
-    vote_average
-)
-VALUES (%s, %s, %s, %s, %s, %s)
-ON CONFLICT (id) DO NOTHING
-""", (
-    movie["id"],
-    movie["title"],
-    movie["release_date"],
-    movie["budget"],
-    movie["revenue"],
-    movie["vote_average"]
-))
 
-conn.commit()
+def load_genres(cur, genres):
+    for g in genres:
+        cur.execute(
+            "INSERT INTO dim_genre (genre_id, genre_name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (g["genre_id"], g["genre_name"])
+        )
+    print(f"[load] dim_genre: {len(genres)} genero(s) processado(s)")
 
-print("Filme inserido com sucesso")
 
-cur.close()
-conn.close()
+def load_languages(cur, languages):
+    for lang in languages:
+        cur.execute(
+            "INSERT INTO dim_language (language_code, language_name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (lang["language_code"], lang["language_name"])
+        )
+    print(f"[load] dim_language: {len(languages)} idioma(s) processado(s)")
+
+
+def load_movies(cur, movies):
+    inserted = 0
+    updated = 0
+    for m in movies:
+        cur.execute("""
+            INSERT INTO fact_movies (
+                movie_id, title, original_title, release_date,
+                budget, revenue, vote_average, vote_count,
+                popularity, runtime, language_code, overview
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (movie_id) DO UPDATE SET
+                title          = EXCLUDED.title,
+                original_title = EXCLUDED.original_title,
+                release_date   = EXCLUDED.release_date,
+                budget         = EXCLUDED.budget,
+                revenue        = EXCLUDED.revenue,
+                vote_average   = EXCLUDED.vote_average,
+                vote_count     = EXCLUDED.vote_count,
+                popularity     = EXCLUDED.popularity,
+                runtime        = EXCLUDED.runtime,
+                language_code  = EXCLUDED.language_code,
+                overview       = EXCLUDED.overview,
+                loaded_at      = NOW()
+        """, (
+            int(m["movie_id"]) if m.get("movie_id") is not None else int(m["id"]),
+            m.get("title"),
+            m.get("original_title"),
+            m.get("release_date"),
+            m.get("budget") or 0,
+            m.get("revenue") or 0,
+            m.get("vote_average"),
+            m.get("vote_count") or 0,
+            m.get("popularity"),
+            m.get("runtime"),
+            m.get("language_code"),
+            m.get("overview"),
+        ))
+    print(f"[load] fact_movies: {len(movies)} filme(s) processado(s)")
+
+
+def load_movie_genres(cur, relations):
+    for rel in relations:
+        cur.execute(
+            "INSERT INTO movie_genres (movie_id, genre_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (rel["movie_id"], rel["genre_id"])
+        )
+    print(f"[load] movie_genres: {len(relations)} relacao(oes) processada(s)")
+
+
+def load():
+    with open(GENRES_PATH, "r", encoding="utf-8") as f:
+        genres = json.load(f)
+    with open(LANGUAGES_PATH, "r", encoding="utf-8") as f:
+        languages = json.load(f)
+    with open(CLEAN_PATH, "r", encoding="utf-8") as f:
+        movies = json.load(f)
+    with open(RELATIONS_PATH, "r", encoding="utf-8") as f:
+        relations = json.load(f)
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+
+        # Ordem importa: dimensoes antes do fato, fato antes do bridge
+        load_genres(cur, genres)
+        load_languages(cur, languages)
+        load_movies(cur, movies)
+        load_movie_genres(cur, relations)
+
+        conn.commit()
+        print("[load] Carga concluida com sucesso")
+    except Exception as e:
+        conn.rollback()
+        print(f"[load] Erro durante a carga — rollback efetuado: {e}")
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
+if __name__ == "__main__":
+    load()

@@ -1,0 +1,48 @@
+# Ambiente virtual Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Credenciais e variáveis de ambiente
+.env
+*.env
+
+# Dados gerados pelo pipeline (arquivos intermediários e brutos)
+data/raw_movies.json
+data/movies_clean.json
+data/genres.json
+data/languages.json
+data/movie_genres.json
+
+# Banco de dados SQLite do Airflow (gerado em runtime)
+airflow.db
+*.db
+
+# Logs do Airflow
+logs/
+
+# Cache do Airflow e metadados
+airflow/
+.airflow/
+
+# Bytecode de DAGs compiladas
+dags/__pycache__/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Docker volumes (se montados localmente)
+pgdata/

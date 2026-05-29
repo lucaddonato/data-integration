@@ -4,5 +4,7 @@ CREATE TABLE IF NOT EXISTS movies (
     release_date DATE,
     budget BIGINT,
     revenue BIGINT,
-    vote_average NUMERIC(4,2)
+    vote_average NUMERIC(4,2),
+    kaggle_score NUMERIC(4,2),
+    kaggle_runtime INTEGER
 );

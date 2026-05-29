@@ -15,6 +15,8 @@ transformed_movie = {
     "budget": movie["budget"],
     "revenue": movie["revenue"],
     "vote_average": movie["vote_average"],
+    "original_language": movie["original_language"],
+    "status": movie["status"],
     "kaggle_score": float(csv_movie["kaggle_score"]),
     "kaggle_runtime": int(csv_movie["kaggle_runtime"])
 }

@@ -5,6 +5,8 @@
     "budget": 63000000,
     "revenue": 100853753,
     "vote_average": 8.439,
+    "original_language": "en",
+    "status": "Released",
     "kaggle_score": 8.8,
     "kaggle_runtime": 139
 }

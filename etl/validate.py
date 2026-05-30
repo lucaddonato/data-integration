@@ -1,4 +1,11 @@
+import os
+import sys
 import psycopg2
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from logger import get_logger
+
+log = get_logger("validate")
 
 
 def get_connection():
@@ -15,11 +22,14 @@ def check(cur, description, query, expected=0):
     cur.execute(query)
     result = cur.fetchone()[0]
     if result != expected:
-        raise ValueError(f"[validate] FALHA — {description}: resultado={result}, esperado={expected}")
-    print(f"[validate] OK — {description}")
+        log.error(f"FALHA — {description}: resultado={result}, esperado={expected}")
+        raise ValueError(f"Validacao falhou: {description}")
+    log.info(f"OK — {description}")
 
 
 def validate():
+    log.info("Iniciando validacoes pos-carga")
+
     conn = get_connection()
     try:
         cur = conn.cursor()
@@ -57,7 +67,7 @@ def validate():
             """
         )
 
-        # Totais finais para log
+        # Totais finais
         cur.execute("SELECT COUNT(*) FROM fact_movies")
         total_movies = cur.fetchone()[0]
 
@@ -70,16 +80,15 @@ def validate():
         cur.execute("SELECT COUNT(*) FROM movie_genres")
         total_relations = cur.fetchone()[0]
 
-        print(
-            f"[validate] Resumo final: "
-            f"{total_movies} filmes | "
+        log.info(
+            f"Resumo: {total_movies} filmes | "
             f"{total_genres} generos | "
             f"{total_languages} idiomas | "
             f"{total_relations} relacoes filme-genero"
         )
 
     except Exception as e:
-        print(f"[validate] Erro de validacao: {e}")
+        log.error(f"Validacao encerrada com erro: {e}")
         raise
     finally:
         cur.close()

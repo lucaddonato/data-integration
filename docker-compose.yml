@@ -17,6 +17,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./etl:/opt/airflow/etl
       - ./data:/opt/airflow/data
+      - ./tests:/opt/airflow/tests
 
     command: >
       bash -c "

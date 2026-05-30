@@ -37,6 +37,10 @@ dags/__pycache__/
 *.swp
 *.swo
 
+# Pytest
+.pytest_cache/
+tests/__pycache__/
+
 # macOS
 .DS_Store
 

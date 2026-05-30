@@ -1,10 +1,17 @@
+import os
+import sys
 import json
 import psycopg2
 
-CLEAN_PATH      = "/opt/airflow/data/movies_clean.json"
-GENRES_PATH     = "/opt/airflow/data/genres.json"
-LANGUAGES_PATH  = "/opt/airflow/data/languages.json"
-RELATIONS_PATH  = "/opt/airflow/data/movie_genres.json"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from logger import get_logger
+
+log = get_logger("load")
+
+CLEAN_PATH     = "/opt/airflow/data/movies_clean.json"
+GENRES_PATH    = "/opt/airflow/data/genres.json"
+LANGUAGES_PATH = "/opt/airflow/data/languages.json"
+RELATIONS_PATH = "/opt/airflow/data/movie_genres.json"
 
 
 def get_connection():
@@ -22,7 +29,7 @@ def load_genres(cur, genres):
             "INSERT INTO dim_genre (genre_id, genre_name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (g["genre_id"], g["genre_name"])
         )
-    print(f"[load] dim_genre: {len(genres)} genero(s) processado(s)")
+    log.info(f"dim_genre: {len(genres)} genero(s) processado(s)")
 
 
 def load_languages(cur, languages):
@@ -31,12 +38,10 @@ def load_languages(cur, languages):
             "INSERT INTO dim_language (language_code, language_name) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (lang["language_code"], lang["language_name"])
         )
-    print(f"[load] dim_language: {len(languages)} idioma(s) processado(s)")
+    log.info(f"dim_language: {len(languages)} idioma(s) processado(s)")
 
 
 def load_movies(cur, movies):
-    inserted = 0
-    updated = 0
     for m in movies:
         cur.execute("""
             INSERT INTO fact_movies (
@@ -58,7 +63,7 @@ def load_movies(cur, movies):
                 overview       = EXCLUDED.overview,
                 loaded_at      = NOW()
         """, (
-            int(m["movie_id"]) if m.get("movie_id") is not None else int(m["id"]),
+            int(m.get("movie_id") or m["id"]),
             m.get("title"),
             m.get("original_title"),
             m.get("release_date"),
@@ -71,7 +76,7 @@ def load_movies(cur, movies):
             m.get("language_code"),
             m.get("overview"),
         ))
-    print(f"[load] fact_movies: {len(movies)} filme(s) processado(s)")
+    log.info(f"fact_movies: {len(movies)} filme(s) processado(s)")
 
 
 def load_movie_genres(cur, relations):
@@ -80,10 +85,12 @@ def load_movie_genres(cur, relations):
             "INSERT INTO movie_genres (movie_id, genre_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
             (rel["movie_id"], rel["genre_id"])
         )
-    print(f"[load] movie_genres: {len(relations)} relacao(oes) processada(s)")
+    log.info(f"movie_genres: {len(relations)} relacao(oes) processada(s)")
 
 
 def load():
+    log.info("Iniciando carga no PostgreSQL")
+
     with open(GENRES_PATH, "r", encoding="utf-8") as f:
         genres = json.load(f)
     with open(LANGUAGES_PATH, "r", encoding="utf-8") as f:
@@ -104,10 +111,10 @@ def load():
         load_movie_genres(cur, relations)
 
         conn.commit()
-        print("[load] Carga concluida com sucesso")
+        log.info("Carga concluida com sucesso")
     except Exception as e:
         conn.rollback()
-        print(f"[load] Erro durante a carga — rollback efetuado: {e}")
+        log.error(f"Erro durante a carga — rollback efetuado: {e}")
         raise
     finally:
         cur.close()

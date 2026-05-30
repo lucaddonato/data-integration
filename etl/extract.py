@@ -1,6 +1,12 @@
 import os
+import sys
 import json
 import requests
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from logger import get_logger
+
+log = get_logger("extract")
 
 API_KEY = os.getenv("TMDB_API_KEY")
 BASE_URL = "https://api.themoviedb.org/3"
@@ -23,18 +29,20 @@ def fetch_popular_movies(pages=2):
         response.raise_for_status()
         results = response.json().get("results", [])
         movies.extend(results)
-        print(f"[extract] Pagina {page} obtida — {len(results)} filmes")
+        log.info(f"Pagina {page} obtida — {len(results)} filmes")
     return movies
 
 
 def load_local_json():
     with open(LOCAL_JSON, "r", encoding="utf-8") as f:
         movie = json.load(f)
-    print(f"[extract] Fonte local: '{movie.get('title')}' (id={movie.get('id')})")
+    log.info(f"Fonte local carregada: '{movie.get('title')}' (id={movie.get('id')})")
     return [movie]
 
 
 def extract():
+    log.info("Iniciando extracao de dados")
+
     # Fonte 1: TMDB API — filmes populares (paginas 1 e 2)
     popular = fetch_popular_movies(pages=2)
     popular_ids = {m["id"] for m in popular}
@@ -46,7 +54,7 @@ def extract():
             detail = fetch_movie_detail(movie["id"])
             detailed.append(detail)
         except Exception as e:
-            print(f"[extract] Erro ao buscar detalhe do filme {movie['id']}: {e}")
+            log.warning(f"Falha ao buscar detalhe do filme id={movie['id']}: {e}")
 
     # Fonte 2: JSON local (arquivo pre-salvo em data/movies.json)
     local_movies = load_local_json()
@@ -56,7 +64,7 @@ def extract():
         if movie.get("id") not in popular_ids:
             detailed.append(movie)
 
-    print(f"[extract] Total bruto antes da deduplicacao: {len(detailed)} filmes")
+    log.info(f"Total bruto antes da deduplicacao: {len(detailed)} filmes")
 
     # Deduplicacao simples por id (mantem primeira ocorrencia)
     seen = set()
@@ -67,12 +75,14 @@ def extract():
             seen.add(mid)
             unique.append(movie)
 
-    print(f"[extract] Total apos deduplicacao: {len(unique)} filmes")
+    duplicates_removed = len(detailed) - len(unique)
+    if duplicates_removed:
+        log.warning(f"{duplicates_removed} filme(s) duplicado(s) removido(s) na extracao")
 
     with open(RAW_PATH, "w", encoding="utf-8") as f:
         json.dump(unique, f, ensure_ascii=False, indent=2)
 
-    print(f"[extract] raw_movies.json salvo com {len(unique)} registros")
+    log.info(f"raw_movies.json salvo com {len(unique)} registros")
 
 
 if __name__ == "__main__":

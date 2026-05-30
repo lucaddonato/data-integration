@@ -186,17 +186,79 @@ Implementadas em `etl/transform.py` (pré-carga) e `etl/validate.py` (pós-carga
 
 ---
 
+## Logging
+
+Todos os módulos ETL utilizam um logger estruturado definido em `etl/logger.py`. O formato de cada linha de log é:
+
+```
+[nome-do-arquivo] (LEVEL) mensagem
+```
+
+Exemplos reais produzidos pela DAG:
+
+```
+[extract]   (INFO)    Pagina 1 obtida — 20 filmes
+[extract]   (WARNING) Falha ao buscar detalhe do filme id=12345: ...
+[transform] (INFO)    Regra 2 (duplicatas): nenhuma duplicata encontrada
+[transform] (WARNING) Regra 1 (nulos): 2 registro(s) removido(s) por id/title nulo
+[transform] (WARNING) Regra 3 (ranges): 1 vote_average(s) fora de [0,10] → None
+[load]      (INFO)    fact_movies: 41 filme(s) processado(s)
+[load]      (ERROR)   Erro durante a carga — rollback efetuado: ...
+[validate]  (INFO)    OK — Sem nulos em title (fact_movies)
+[validate]  (ERROR)   FALHA — Sem duplicatas de movie_id: resultado=2, esperado=0
+```
+
+Os logs ficam visíveis diretamente nos **Task Logs** do Airflow (aba *Log* de cada task no Graph View).
+
+---
+
+## Testes automatizados
+
+As funções puras de `etl/transform.py` são cobertas por testes unitários em `tests/test_transform.py` usando **pytest**.
+
+### Cobertura
+
+| Classe de teste | Funções testadas |
+|---|---|
+| `TestValidateNulls` | Drop por `id`/`title` nulo; fill de `vote_average`, `budget`, `revenue` |
+| `TestValidateDuplicates` | Remoção de duplicata; mantém registro com maior `vote_count` |
+| `TestValidateRanges` | Limites de `vote_average` [0,10]; `budget`/`revenue` negativos; `runtime` inválido |
+| `TestExtractGenres` | Deduplicação de gêneros; estrutura do retorno |
+| `TestExtractLanguages` | Deduplicação de idiomas; fallback de nome quando `spoken_languages` vazio |
+| `TestBuildMovieGenres` | Filtro por `valid_ids`; ausência de gêneros |
+
+### Como executar
+
+Com Python e dependências instaladas localmente:
+
+```bash
+pip install pandas pytest
+pytest tests/ -v
+```
+
+Ou dentro do contêiner Airflow (após `docker compose up`):
+
+```bash
+docker exec -it airflow pytest /opt/airflow/tests/ -v
+```
+
+---
+
 ## Estrutura do repositório
 
 ```
 data-integration/
 ├── dags/
-│   └── teste-1.py           # DAG do Airflow
+│   └── teste-1.py            # DAG do Airflow
 ├── etl/
+│   ├── logger.py             # Logger estruturado compartilhado
 │   ├── extract.py            # Extração (TMDB API + JSON local)
 │   ├── transform.py          # Transformação e validações
 │   ├── load.py               # Carga no PostgreSQL
 │   └── validate.py           # Validações pós-carga
+├── tests/
+│   ├── conftest.py           # Configuração de path para pytest
+│   └── test_transform.py     # 27 testes unitários das funções de transformação
 ├── sql/
 │   └── init.sql              # Schema dimensional (criado automaticamente)
 ├── data/
@@ -218,7 +280,7 @@ data-integration/
 | Conteinerização | Docker + Docker Compose | 24+ |
 | Orquestração | Apache Airflow | 2.8.4 |
 | Banco de dados | PostgreSQL | 15 |
-| Bibliotecas | pandas, requests, psycopg2-binary | — |
+| Bibliotecas | pandas, requests, psycopg2-binary, pytest | — |
 
 ---
 

@@ -240,22 +240,16 @@ Consultas implementadas:
 ### 1. Clonar o repositório
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/lucaddonato/data-integration
 cd data-integration
 ```
 
 ### 2. Configurar a variável da API
 
-Criar arquivo:
+Colocar o arquivo (fiz o upload):
 
 ```text
 .env
-```
-
-Exemplo:
-
-```env
-TMDB_API_KEY=SUA_CHAVE
 ```
 
 ### 3. Subir os containers

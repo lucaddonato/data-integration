@@ -26,7 +26,7 @@ flowchart LR
     L -->|psycopg2| P[(PostgreSQL\nmovies_db)]
     P --> V[validate.py]
 
-    subgraph Airflow DAG — movies_etl_pipeline
+    subgraph "Airflow DAG — movies_etl_pipeline"
         E --> T --> L --> V
     end
 ```

@@ -35,9 +35,11 @@ def fetch_popular_movies(pages=2):
 
 def load_local_json():
     with open(LOCAL_JSON, "r", encoding="utf-8") as f:
-        movie = json.load(f)
-    log.info(f"Fonte local carregada: '{movie.get('title')}' (id={movie.get('id')})")
-    return [movie]
+        data = json.load(f)
+    movies = data if isinstance(data, list) else [data]
+    for movie in movies:
+        log.info(f"Fonte local carregada: '{movie.get('title')}' (id={movie.get('id')})")
+    return movies
 
 
 def extract():

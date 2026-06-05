@@ -4,28 +4,28 @@
     "genre_name": "Horror"
   },
   {
-    "genre_id": 9648,
-    "genre_name": "Mystery"
-  },
-  {
-    "genre_id": 28,
-    "genre_name": "Action"
-  },
-  {
-    "genre_id": 53,
-    "genre_name": "Thriller"
+    "genre_id": 80,
+    "genre_name": "Crime"
   },
   {
     "genre_id": 18,
     "genre_name": "Drama"
   },
   {
-    "genre_id": 80,
-    "genre_name": "Crime"
+    "genre_id": 53,
+    "genre_name": "Thriller"
+  },
+  {
+    "genre_id": 9648,
+    "genre_name": "Mystery"
   },
   {
     "genre_id": 878,
     "genre_name": "Science Fiction"
+  },
+  {
+    "genre_id": 28,
+    "genre_name": "Action"
   },
   {
     "genre_id": 12,
@@ -50,6 +50,14 @@
   {
     "genre_id": 10749,
     "genre_name": "Romance"
+  },
+  {
+    "genre_id": 36,
+    "genre_name": "History"
+  },
+  {
+    "genre_id": 10752,
+    "genre_name": "War"
   },
   {
     "genre_id": 10402,

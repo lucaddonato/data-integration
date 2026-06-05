@@ -1,0 +1,34 @@
+[
+  {
+    "language_code": "en",
+    "language_name": "English"
+  },
+  {
+    "language_code": "hi",
+    "language_name": "Hindi"
+  },
+  {
+    "language_code": "ru",
+    "language_name": "Russian"
+  },
+  {
+    "language_code": "zh",
+    "language_name": "Mandarin"
+  },
+  {
+    "language_code": "ta",
+    "language_name": "Tamil"
+  },
+  {
+    "language_code": "ja",
+    "language_name": "Japanese"
+  },
+  {
+    "language_code": "it",
+    "language_name": "Italian"
+  },
+  {
+    "language_code": "es",
+    "language_name": "Spanish"
+  }
+]

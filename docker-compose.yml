@@ -17,12 +17,21 @@ services:
       - ./dags:/opt/airflow/dags
       - ./etl:/opt/airflow/etl
       - ./data:/opt/airflow/data
+      - ./tests:/opt/airflow/tests
 
-    command:
-      - bash
-      - -c
-      - |
-        airflow standalone
+    command: >
+      bash -c "
+      airflow db migrate &&
+      (airflow users create
+      --username admin
+      --password admin
+      --firstname Luca
+      --lastname Admin
+      --role Admin
+      --email admin@email.com || true);
+      airflow webserver &
+      airflow scheduler
+      "
 
   postgres:
     image: postgres:15

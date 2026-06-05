@@ -1,292 +1,289 @@
-# Data Integration - Movie ETL Pipeline
+# Pipeline de Integração de Dados — TMDB Movies
 
-## Descrição do Projeto
+Projeto semestral da disciplina **Data Integration** (ESPM — Sistemas de Informação, 2026.1).
 
-Este projeto implementa um pipeline ETL (Extract, Transform, Load) para integração de dados de filmes utilizando Python, Docker, Apache Airflow e PostgreSQL.
-
-O objetivo é coletar informações de filmes a partir de duas fontes de dados heterogêneas, realizar transformações e validações de qualidade e armazenar os dados em um banco PostgreSQL utilizando modelagem dimensional.
+Pipeline ETL completo que extrai dados de filmes de duas fontes heterogêneas, aplica validações de qualidade, transforma e carrega em um banco de dados analítico PostgreSQL, orquestrado pelo Apache Airflow.
 
 ---
 
 ## Fontes de Dados
 
-### Fonte 1 - TMDB API
-
-API utilizada para obtenção dos detalhes dos filmes:
-
-* Título
-* Data de lançamento
-* Orçamento
-* Receita
-* Nota média
-* Idioma original
-* Status do filme
-
-### Fonte 2 - CSV
-
-Arquivo:
-
-```text
-data/kaggle_movies.csv
-```
-
-Contendo:
-
-* ID do filme
-* Nota Kaggle
-* Duração do filme
+| Fonte | Tipo | Descrição |
+|---|---|---|
+| [TMDB API](https://developer.themoviedb.org/) | API REST | Filmes populares via `/movie/popular` (pág. 1–2) + detalhes por `/movie/{id}` |
+| `data/movies.json` | JSON local | Arquivo pré-salvo com dados detalhados de um filme (Fight Club, id=550) |
 
 ---
 
-## Arquitetura da Solução
+## Arquitetura
 
-```text
-CSV (kaggle_movies.csv)
-            |
-            |
-TMDB API -----> Extract
-                    |
-                    v
-               movies.json
-                    |
-                    v
-                Transform
-                    |
-                    v
-         transformed_movies.json
-                    |
-                    v
-                  Load
-                    |
-                    v
-               PostgreSQL
-                    |
-                    v
-                Consultas
+```mermaid
+flowchart LR
+    A([TMDB API\n/movie/popular]) -->|requests| E[extract.py]
+    B([movies.json\nJSON local]) -->|json.load| E
+    E -->|raw_movies.json| T[transform.py]
+    T -->|movies_clean.json\ngenres.json\nlanguages.json| L[load.py]
+    L -->|psycopg2| P[(PostgreSQL\nmovies_db)]
+    P --> V[validate.py]
+
+    subgraph Airflow DAG — movies_etl_pipeline
+        E --> T --> L --> V
+    end
 ```
 
 ---
 
-## Estrutura do Projeto
+## Modelo de Dados
 
-```text
-.
-├── dags
-│   └── teste-1.py
-│
-├── etl
-│   ├── extract.py
-│   ├── transform.py
-│   ├── load.py
-│   └── validate.py
-│
-├── sql
-│   ├── init.sql
-│   └── queries.sql
-│
-├── data
-│   ├── kaggle_movies.csv
-│   ├── movies.json
-│   └── transformed_movies.json
-│
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .gitignore
-└── README.md
+```
+dim_language         dim_genre
+──────────────       ──────────────
+language_code  PK    genre_id  PK
+language_name        genre_name
+
+fact_movies
+──────────────────────────────
+movie_id       PK
+title          NOT NULL
+original_title
+release_date
+budget
+revenue
+vote_average
+vote_count
+popularity
+runtime
+language_code  FK → dim_language
+overview
+loaded_at
+
+movie_genres  (bridge)
+──────────────────────────────
+movie_id  FK → fact_movies
+genre_id  FK → dim_genre
 ```
 
 ---
 
-## Pipeline ETL
+## Pré-requisitos
 
-### Extract
-
-Responsável por consultar a API TMDB e obter informações de 20 filmes populares e bem avaliados.
-
-Saída:
-
-```text
-movies.json
-```
-
-### Transform
-
-Realiza o cruzamento dos dados obtidos pela API com os dados presentes no arquivo CSV.
-
-Saída:
-
-```text
-transformed_movies.json
-```
-
-### Load
-
-Responsável por carregar os dados transformados no PostgreSQL.
-
-Modelo utilizado:
-
-* dim_movie
-* dim_release_date
-* fact_movie_metrics
-
-### Validate
-
-Executa validações de qualidade de dados antes da utilização das informações.
-
-Validações implementadas:
-
-1. Verificação de existência de registros na tabela fato.
-2. Verificação de valores negativos.
-3. Verificação de integridade referencial entre fato e dimensões.
+- [Docker](https://docs.docker.com/get-docker/) 24+
+- [Docker Compose](https://docs.docker.com/compose/) (incluso no Docker Desktop)
+- Chave de API gratuita do [TMDB](https://www.themoviedb.org/settings/api)
 
 ---
 
-## Modelo Dimensional
+## Execução passo a passo
 
-### Dimensão Filme
-
-```text
-dim_movie
-```
-
-Campos:
-
-* movie_id
-* title
-* original_language
-* status
-
-### Dimensão Data
-
-```text
-dim_release_date
-```
-
-Campos:
-
-* date_id
-* release_date
-* release_year
-* release_month
-* release_day
-
-### Tabela Fato
-
-```text
-fact_movie_metrics
-```
-
-Campos:
-
-* movie_id
-* date_id
-* budget
-* revenue
-* profit
-* vote_average
-* kaggle_score
-* kaggle_runtime
-
----
-
-## Orquestração com Airflow
-
-DAG:
-
-```text
-movies_etl_pipeline
-```
-
-Tasks:
-
-1. extract_tmdb_data
-2. transform_movie_data
-3. load_movie_data
-4. validate_loaded_data
-
-Fluxo:
-
-```text
-extract
-    ↓
-transform
-    ↓
-load
-    ↓
-validate
-```
-
----
-
-## Consultas de Negócio
-
-As consultas utilizadas no projeto encontram-se em:
-
-```text
-sql/queries.sql
-```
-
-Consultas implementadas:
-
-1. Top 10 filmes por lucro.
-2. Top 10 filmes mais bem avaliados.
-3. Top 10 filmes por receita.
-
----
-
-## Como Executar
-
-### 1. Clonar o repositório
+### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/lucaddonato/data-integration
+git clone <url-do-repositorio>
 cd data-integration
 ```
 
-### 2. Configurar a variável da API
+### 2. Configure a chave da API
 
-Colocar o arquivo (fiz o upload):
+Crie o arquivo `.env` na raiz do projeto:
 
-```text
-.env
+```bash
+echo "TMDB_API_KEY=sua_chave_aqui" > .env
 ```
 
-### 3. Subir os containers
+### 3. Suba os contêineres
 
 ```bash
 docker compose up --build
 ```
 
-### 4. Acessar o Airflow
+Aguarde até ver a mensagem do scheduler do Airflow nos logs (cerca de 1–2 minutos na primeira execução).
 
-```text
-http://localhost:8080
+### 4. Acesse o Airflow
+
+Abra [http://localhost:8080](http://localhost:8080) no navegador.
+
+| Campo | Valor |
+|---|---|
+| Usuário | `admin` |
+| Senha | `admin` |
+
+### 5. Execute a DAG
+
+1. Localize a DAG **`movies_etl_pipeline`** na lista.
+2. Clique no botão **▶ Trigger DAG** (canto superior direito).
+3. Acompanhe as tasks no **Graph View** — todas devem ficar verdes.
+
+### 6. Verifique os dados no Postgres
+
+Conecte-se ao banco com qualquer cliente SQL (DBeaver, psql, etc.):
+
+```
+Host:     localhost
+Porta:    5432
+Banco:    movies_db
+Usuário:  admin
+Senha:    admin
 ```
 
-### 5. Executar a DAG
+Ou via linha de comando:
 
-DAG:
-
-```text
-movies_etl_pipeline
+```bash
+docker exec -it postgres_movies psql -U admin -d movies_db
 ```
 
 ---
 
-## Tecnologias Utilizadas
+## Consultas de valor
 
-* Python 3.10
-* Docker
-* Docker Compose
-* Apache Airflow 2.8
-* PostgreSQL 15
-* Pandas
-* Requests
-* Psycopg2
+### 1. Top 10 filmes por receita
+
+```sql
+SELECT title, revenue, budget,
+       ROUND((revenue - budget) / NULLIF(budget, 0)::numeric * 100, 1) AS roi_pct
+FROM fact_movies
+WHERE budget > 0
+ORDER BY revenue DESC
+LIMIT 10;
+```
+
+### 2. Gêneros com mais filmes
+
+```sql
+SELECT dg.genre_name, COUNT(*) AS total_filmes
+FROM movie_genres mg
+JOIN dim_genre dg ON mg.genre_id = dg.genre_id
+GROUP BY dg.genre_name
+ORDER BY total_filmes DESC;
+```
+
+### 3. Média de avaliação por idioma original
+
+```sql
+SELECT dl.language_name, COUNT(*) AS filmes,
+       ROUND(AVG(fm.vote_average), 2) AS media_nota
+FROM fact_movies fm
+JOIN dim_language dl ON fm.language_code = dl.language_code
+GROUP BY dl.language_name
+ORDER BY media_nota DESC;
+```
 
 ---
 
-## Integrantes
+## Validações de qualidade
 
-* Luca De Donato Paulillo
+Implementadas em `etl/transform.py` (pré-carga) e `etl/validate.py` (pós-carga):
+
+| # | Regra | Onde | Ação |
+|---|---|---|---|
+| 1 | `id` ou `title` nulos | transform | Remove o registro |
+| 2 | `movie_id` duplicado | transform | Mantém o de maior `vote_count` |
+| 3 | `vote_average` fora de [0, 10] | transform | Seta `NULL` |
+| 4 | `budget` ou `revenue` negativos | transform | Seta `0` |
+| 5 | Sem `title` nulo no banco | validate | Levanta erro se falhar |
+| 6 | Sem duplicatas no banco | validate | Levanta erro se falhar |
+| 7 | `vote_average` em range no banco | validate | Levanta erro se falhar |
+| 8 | Integridade referencial `movie_genres → dim_genre` | validate | Levanta erro se falhar |
+
+---
+
+## Logging
+
+Todos os módulos ETL utilizam um logger estruturado definido em `etl/logger.py`. O formato de cada linha de log é:
+
+```
+[nome-do-arquivo] (LEVEL) mensagem
+```
+
+Exemplos reais produzidos pela DAG:
+
+```
+[extract]   (INFO)    Pagina 1 obtida — 20 filmes
+[extract]   (WARNING) Falha ao buscar detalhe do filme id=12345: ...
+[transform] (INFO)    Regra 2 (duplicatas): nenhuma duplicata encontrada
+[transform] (WARNING) Regra 1 (nulos): 2 registro(s) removido(s) por id/title nulo
+[transform] (WARNING) Regra 3 (ranges): 1 vote_average(s) fora de [0,10] → None
+[load]      (INFO)    fact_movies: 41 filme(s) processado(s)
+[load]      (ERROR)   Erro durante a carga — rollback efetuado: ...
+[validate]  (INFO)    OK — Sem nulos em title (fact_movies)
+[validate]  (ERROR)   FALHA — Sem duplicatas de movie_id: resultado=2, esperado=0
+```
+
+Os logs ficam visíveis diretamente nos **Task Logs** do Airflow (aba *Log* de cada task no Graph View).
+
+---
+
+## Testes automatizados
+
+As funções puras de `etl/transform.py` são cobertas por testes unitários em `tests/test_transform.py` usando **pytest**.
+
+### Cobertura
+
+| Classe de teste | Funções testadas |
+|---|---|
+| `TestValidateNulls` | Drop por `id`/`title` nulo; fill de `vote_average`, `budget`, `revenue` |
+| `TestValidateDuplicates` | Remoção de duplicata; mantém registro com maior `vote_count` |
+| `TestValidateRanges` | Limites de `vote_average` [0,10]; `budget`/`revenue` negativos; `runtime` inválido |
+| `TestExtractGenres` | Deduplicação de gêneros; estrutura do retorno |
+| `TestExtractLanguages` | Deduplicação de idiomas; fallback de nome quando `spoken_languages` vazio |
+| `TestBuildMovieGenres` | Filtro por `valid_ids`; ausência de gêneros |
+
+### Como executar
+
+Com Python e dependências instaladas localmente:
+
+```bash
+pip install pandas pytest
+pytest tests/ -v
+```
+
+Ou dentro do contêiner Airflow (após `docker compose up`):
+
+```bash
+docker exec -it airflow pytest /opt/airflow/tests/ -v
+```
+
+---
+
+## Estrutura do repositório
+
+```
+data-integration/
+├── dags/
+│   └── teste-1.py            # DAG do Airflow
+├── etl/
+│   ├── logger.py             # Logger estruturado compartilhado
+│   ├── extract.py            # Extração (TMDB API + JSON local)
+│   ├── transform.py          # Transformação e validações
+│   ├── load.py               # Carga no PostgreSQL
+│   └── validate.py           # Validações pós-carga
+├── tests/
+│   ├── conftest.py           # Configuração de path para pytest
+│   └── test_transform.py     # 27 testes unitários das funções de transformação
+├── sql/
+│   └── init.sql              # Schema dimensional (criado automaticamente)
+├── data/
+│   └── movies.json           # Fonte local (seed)
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── .env                      # NÃO commitar — contém a chave de API
+└── .gitignore
+```
+
+---
+
+## Stack técnica
+
+| Camada | Ferramenta | Versão |
+|---|---|---|
+| Linguagem | Python | 3.10 |
+| Conteinerização | Docker + Docker Compose | 24+ |
+| Orquestração | Apache Airflow | 2.8.4 |
+| Banco de dados | PostgreSQL | 15 |
+| Bibliotecas | pandas, requests, psycopg2-binary, pytest | — |
+
+---
+
+## Uso de Inteligência Artificial
+
+Claude (Anthropic) foi utilizado para revisar a arquitetura do pipeline, corrigir bugs de orquestração no `docker-compose.yml` e sugerir a estrutura do modelo dimensional.

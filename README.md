@@ -188,24 +188,17 @@ Implementadas em `etl/transform.py` (pré-carga) e `etl/validate.py` (pós-carga
 
 ## Logging
 
-Todos os módulos ETL utilizam um logger estruturado definido em `etl/logger.py`. O formato de cada linha de log é:
-
-```
-[nome-do-arquivo] (LEVEL) mensagem
-```
+Todos os módulos ETL utilizam um logger estruturado em JSON definido em `etl/logger.py`. Cada linha de log é um objeto JSON com os campos `timestamp`, `level`, `logger` e `message`.
 
 Exemplos reais produzidos pela DAG:
 
-```
-[extract]   (INFO)    Pagina 1 obtida — 20 filmes
-[extract]   (WARNING) Falha ao buscar detalhe do filme id=12345: ...
-[transform] (INFO)    Regra 2 (duplicatas): nenhuma duplicata encontrada
-[transform] (WARNING) Regra 1 (nulos): 2 registro(s) removido(s) por id/title nulo
-[transform] (WARNING) Regra 3 (ranges): 1 vote_average(s) fora de [0,10] → None
-[load]      (INFO)    fact_movies: 41 filme(s) processado(s)
-[load]      (ERROR)   Erro durante a carga — rollback efetuado: ...
-[validate]  (INFO)    OK — Sem nulos em title (fact_movies)
-[validate]  (ERROR)   FALHA — Sem duplicatas de movie_id: resultado=2, esperado=0
+```json
+{"timestamp": "2026-05-24T14:32:01.123456+00:00", "level": "INFO", "logger": "extract", "message": "Pagina 1 obtida — 20 filmes"}
+{"timestamp": "2026-05-24T14:32:02.456789+00:00", "level": "WARNING", "logger": "extract", "message": "Falha ao buscar detalhe do filme id=12345: ..."}
+{"timestamp": "2026-05-24T14:32:05.789012+00:00", "level": "INFO", "logger": "transform", "message": "Regra 2 (duplicatas): nenhuma duplicata encontrada"}
+{"timestamp": "2026-05-24T14:32:06.012345+00:00", "level": "WARNING", "logger": "transform", "message": "Regra 1 (nulos): 2 registro(s) removido(s) por id/title nulo"}
+{"timestamp": "2026-05-24T14:32:10.345678+00:00", "level": "INFO", "logger": "load", "message": "fact_movies: 41 filme(s) processado(s)"}
+{"timestamp": "2026-05-24T14:32:12.678901+00:00", "level": "ERROR", "logger": "validate", "message": "FALHA — Sem duplicatas de movie_id: resultado=2, esperado=0"}
 ```
 
 Os logs ficam visíveis diretamente nos **Task Logs** do Airflow (aba *Log* de cada task no Graph View).

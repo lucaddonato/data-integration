@@ -2,6 +2,9 @@
 
 Projeto semestral da disciplina **Data Integration** (ESPM — Sistemas de Informação, 2026.1).
 
+# Link YouTube
+https://youtu.be/u8ZLy42W2tw
+
 Pipeline ETL completo que extrai dados de filmes de duas fontes heterogêneas, aplica validações de qualidade, transforma e carrega em um banco de dados analítico PostgreSQL, orquestrado pelo Apache Airflow.
 
 ---

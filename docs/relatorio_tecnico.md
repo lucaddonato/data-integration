@@ -31,7 +31,7 @@ A solução implementada extrai dados de duas fontes distintas — a API REST do
 
 O pipeline atende aos requisitos obrigatórios do enunciado: duas fontes heterogêneas, pelo menos uma fonte semi-estruturada, ETL modularizado, ambiente containerizado, DAG com quatro tasks e dependências, modelagem dimensional (1 fato + 2 dimensões), validações de qualidade e consultas analíticas de valor para o usuário final. Como itens desejáveis, o projeto inclui testes automatizados com pytest, logs estruturados em JSON e uso de variáveis de ambiente para credenciais da API.
 
-Os principais resultados obtidos após a execução do pipeline incluem a carga de filmes na tabela fato, gêneros e idiomas nas dimensões, e relações na tabela bridge `movie_genres`, conforme detalhado na seção 7. Três consultas SQL de valor demonstram análises de receita e ROI, distribuição por gênero e avaliação média por idioma original — informações relevantes para stakeholders do setor de entretenimento.
+Os principais resultados obtidos após a execução do pipeline incluem a carga de **60 filmes** na tabela fato, **16 gêneros** e **13 idiomas** nas dimensões, e **152 relações** na tabela bridge `movie_genres`, conforme detalhado na seção 7. Três consultas SQL de valor demonstram análises de receita e ROI, distribuição por gênero e avaliação média por idioma original — informações relevantes para stakeholders do setor de entretenimento.
 
 As principais limitações identificadas são a dependência de conectividade com a API externa, a ausência de dashboard visual e credenciais parcialmente hardcoded no módulo de carga. Como evoluções futuras, propõe-se carga incremental por data, CI/CD com GitHub Actions e um dashboard em Streamlit consumindo o Postgres.
 
@@ -305,6 +305,8 @@ Todas as tasks utilizam `BashOperator` e são encadeadas linearmente (`extract >
 3. Disparar a DAG manualmente via **Trigger DAG** ou aguardar o agendamento diário
 4. Acompanhar execução no **Graph View** e logs JSON em cada task
 
+![DAG Airflow — 4 tasks em success](screenshots/airflow_dag_success.jpeg)
+
 ---
 
 ## 6. Validações de Qualidade Implementadas
@@ -349,10 +351,10 @@ Após execução bem-sucedida da DAG, o módulo `validate.py` registra um resumo
 
 | Tabela | Registros carregados |
 |---|---|
-| `fact_movies` | filmes |
-| `dim_genre` | gêneros |
-| `dim_language` | idiomas |
-| `movie_genres` | relações filme-gênero |
+| `fact_movies` | 60 filmes |
+| `dim_genre` | 16 gêneros |
+| `dim_language` | 13 idiomas |
+| `movie_genres` | 152 relações filme-gênero |
 
 ### 7.2 Consulta 1 — Top 10 filmes por receita e ROI
 
@@ -366,6 +368,10 @@ WHERE budget > 0
 ORDER BY revenue DESC
 LIMIT 10;
 ```
+
+![Consulta 1 — Top 10 receita e ROI](screenshots/consulta1_roi.jpeg)
+
+**Análise:** O filme *Obsession* lidera em ROI com 22.741%, resultado de um orçamento baixo (US$ 750 mil) frente a uma receita expressiva (US$ 171 milhões). Títulos consagrados como *The Godfather* e *Pulp Fiction* também figuram no top 10, confirmando que filmes com alto reconhecimento de público tendem a manter receita muito superior ao investimento original. A maioria dos filmes da lista apresenta ROI positivo, o que é esperado para títulos populares retornados pela API do TMDB.
 
 ---
 
@@ -381,6 +387,10 @@ GROUP BY dg.genre_name
 ORDER BY total_filmes DESC;
 ```
 
+![Consulta 2 — Gêneros com mais filmes](screenshots/consulta2_generos.jpeg)
+
+**Análise:** Drama é o gênero dominante com 27 filmes, seguido de Action (22) e Thriller (19), refletindo a composição dos títulos mais populares retornados pela API do TMDB. A nota média é consistentemente alta em todos os gêneros (acima de 7.0), indicando que o catálogo extraído concentra filmes bem avaliados pelo público. Essa distribuição é útil para decisões de curadoria e aquisição de conteúdo em plataformas de streaming.
+
 ---
 
 ### 7.4 Consulta 3 — Média de avaliação por idioma original
@@ -395,6 +405,10 @@ JOIN dim_language dl ON fm.language_code = dl.language_code
 GROUP BY dl.language_name
 ORDER BY media_nota DESC;
 ```
+
+![Consulta 3 — Média de avaliação por idioma](screenshots/consulta3_idiomas.jpeg)
+
+**Análise:** O coreano lidera com nota média de 8.50, embora representado por apenas 1 filme, o que limita a generalização. O inglês, com 41 filmes e média de 7.89, oferece a amostra mais representativa e confirma a predominância de produções anglófonas no catálogo. Idiomas com poucos registros (japonês, mandarim, hindi) podem ter médias distorcidas, limitação esperada dado o volume reduzido da extração — apenas 2 páginas da API do TMDB por execução.
 
 ---
 
